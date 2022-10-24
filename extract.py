@@ -41,28 +41,3 @@ def load_raw_data():
     assert len(y_test) == 160
 
     return x_raw_train, y_train, x_raw_test, y_test
-
-
-def create_x_unigrams(x_raw):
-    vectorizer = CountVectorizer()
-    X = vectorizer.fit_transform(x_raw).toarray()
-    return X, vectorizer
-
-
-def create_x_bigrams(x_raw):
-    vectorizer = CountVectorizer(ngram_range=(2, 2))
-    X = vectorizer.fit_transform(x_raw).toarray()
-    return X, vectorizer
-
-
-def create_x_y_unigrams():
-    x_train, y_train, _, _ = load_raw_data()
-    X, vect = create_x_unigrams(x_train)
-    return X, y_train, vect
-
-
-def create_x_y_uni_and_bi():
-    x_train, y_train, _, _ = load_raw_data()
-    vectorizer = CountVectorizer(ngram_range=(1, 2))
-    X = vectorizer.fit_transform(x_train).toarray()
-    return X, y_train, vectorizer

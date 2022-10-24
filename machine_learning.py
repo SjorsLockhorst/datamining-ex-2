@@ -1,9 +1,17 @@
-from sklearn.model_selection import cross_validate
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.model_selection import cross_validate, GridSearchCV
+from sklearn.feature_selection import (
+    chi2,
+    GenericUnivariateSelect,
+    VarianceThreshold,
+    f_classif,
+)
 from sklearn.naive_bayes import MultinomialNB
-from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import LogisticRegressionCV
 from sklearn.tree import DecisionTreeClassifier
+from sklearn.pipeline import Pipeline
 
-from extract import create_x_y_unigrams, create_x_y_uni_and_bi
+from extract import load_raw_data
 
 
 def validate(X, y, estimator, scoring):
@@ -35,14 +43,57 @@ def test_uni_and_bi(
     return results_uni, results_uni_and_bi
 
 
-if __name__ == "__main__":
-    x_unigrams, y, _ = create_x_y_unigrams()
-    x_uni_and_bi, y, _ = create_x_y_uni_and_bi()
+uni_gram_vectorizer = CountVectorizer()
+uni_and_bigram_vectorizer = CountVectorizer(ngram_range=(1, 2))
 
-    test_uni_and_bi(x_unigrams, x_uni_and_bi, y, MultinomialNB(), MultinomialNB())
-    test_uni_and_bi(
-        x_unigrams, x_uni_and_bi, y, LogisticRegression(), LogisticRegression()
+
+if __name__ == "__main__":
+
+    x_train_raw, y_train, x_test_raw, y_test = load_raw_data()
+    x_uni = uni_gram_vectorizer.fit_transform(x_train_raw)
+    x_uni_and_bi = uni_and_bigram_vectorizer.fit_transform(x_train_raw)
+    x_test_uni = uni_gram_vectorizer.transform(x_test_raw)
+    x_test_uni_and_bi = uni_and_bigram_vectorizer.transform(x_test_raw)
+
+    # nb_pipe = Pipeline(
+    #     steps=[
+    #         ("variance_threshold", VarianceThreshold(0)),
+    #         ("feature_selector", GenericUnivariateSelect()),
+    #         ("NB", MultinomialNB()),
+    #     ]
+    # )
+    # grid_search_nb = GridSearchCV(
+    #     nb_pipe,
+    #     {
+    #         "feature_selector__mode": ["percentile"],
+    #         "feature_selector__param": [1, 2, 3, 4, 5, 10, 20, 30, 40],
+    #         "feature_selector__score_func": [f_classif, chi2],
+    #     },
+    #     scoring="accuracy",
+    #     cv=10,
+    #     n_jobs=-1,
+    # )
+    # grid_search_nb.fit(x_uni, y_train)
+    # print(grid_search_nb.best_params_)
+    # print(grid_search_nb.best_score_)
+
+    # grid_search_nb.fit(x_uni_and_bi, y_train)
+    # print(grid_search_nb.best_params_)
+    # print(grid_search_nb.best_score_)
+    clf = LogisticRegressionCV(
+        cv=10, penalty="l1", solver="liblinear", n_jobs=-1, scoring="accuracy"
     )
-    test_uni_and_bi(
-        x_unigrams, x_uni_and_bi, y, DecisionTreeClassifier(), DecisionTreeClassifier()
-    )
+    clf_uni = clf.fit(x_uni, y_train)
+    print(clf_uni.score(x_test_uni, y_test))
+    clf_uni_and_bi = clf.fit(x_uni_and_bi, y_train)
+    print(clf_uni_and_bi.score(x_test_uni_and_bi, y_test))
+
+    # X_new = SelectPercentile(chi2, percentile=10).fit_transform(x_uni, y_train)
+    # print(X_new.shape)
+    # test_uni_and_bi(x_uni, x_uni_and_bi, y_train, MultinomialNB(), MultinomialNB())
+    # test_uni_and_bi(
+    #     x_uni, x_uni_and_bi, y_train, LogisticRegression(), LogisticRegression()
+    # )
+    # test_uni_and_bi(
+    #     x_uni, x_uni_and_bi, y_train, DecisionTreeClassifier(), DecisionTreeClassifier()
+    # )
