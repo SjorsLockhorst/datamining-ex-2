@@ -13,8 +13,9 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.pipeline import Pipeline, FeatureUnion
 import pandas as pd
 import numpy as np
-
+import hyperparameters as param
 from extract import load_raw_data
+from stop_words import stop_words
 
 
 def validate(X, y, estimator, scoring):
@@ -62,7 +63,7 @@ class CustomVectorizer(BaseEstimator, TransformerMixin):
 
 
 uni_gram_vectorizer = CountVectorizer(stop_words="english")
-uni_and_bigram_vectorizer = CountVectorizer(ngram_range=(1, 2), stop_words="english")
+uni_and_bigram_vectorizer = CountVectorizer(ngram_range=(1, 2), stop_words=stop_words)
 vect = CustomVectorizer()
 uni_all_feats = FeatureUnion(
     [("bag-of-words", uni_gram_vectorizer), ("capital-letters", uni_gram_vectorizer)]
@@ -75,13 +76,12 @@ uni_and_bi_all_feats = FeatureUnion(
 )
 
 if __name__ == "__main__":
-
+    print(param.rand_forest_parameters)
     x_train_raw, y_train, x_test_raw, y_test = load_raw_data()
     x_uni = uni_all_feats.fit_transform(x_train_raw)
     x_uni_and_bi = uni_and_bi_all_feats.fit_transform(x_train_raw)
     x_test_uni = uni_all_feats.transform(x_test_raw)
     x_test_uni_and_bi = uni_and_bi_all_feats.transform(x_test_raw)
-
     nb_pipe = Pipeline(
         steps=[
             ("variance_threshold", VarianceThreshold(0)),
@@ -91,11 +91,7 @@ if __name__ == "__main__":
     )
     grid_search_nb = GridSearchCV(
         nb_pipe,
-        {
-            "feature_selector__mode": ["percentile"],
-            "feature_selector__param": [1, 2, 3, 4, 5, 10, 20, 30, 40],
-            "feature_selector__score_func": [f_classif, chi2],
-        },
+        param.multi_bayes_parameters,
         scoring="accuracy",
         cv=10,
         n_jobs=-1,
@@ -103,10 +99,12 @@ if __name__ == "__main__":
     grid_search_nb.fit(x_uni, y_train)
     print(grid_search_nb.best_params_)
     print(grid_search_nb.best_score_)
+    grid_search_nb.pred()
 
     grid_search_nb.fit(x_uni_and_bi, y_train)
     print(grid_search_nb.best_params_)
     print(grid_search_nb.best_score_)
+    
     # clf = LogisticRegressionCV(
     #     cv=10, penalty="l1", solver="liblinear", n_jobs=-1, scoring="accuracy"
     # )
