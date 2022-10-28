@@ -10,6 +10,8 @@ from sklearn.naive_bayes import MultinomialNB
 from sklearn.linear_model import LogisticRegressionCV
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.pipeline import Pipeline
+import pandas as pd
+import numpy as np
 
 from extract import load_raw_data
 
@@ -43,9 +45,27 @@ def test_uni_and_bi(
     return results_uni, results_uni_and_bi
 
 
-uni_gram_vectorizer = CountVectorizer()
-uni_and_bigram_vectorizer = CountVectorizer(ngram_range=(1, 2))
+class CustomVectorizer(CountVectorizer):
+    def capital_letter_counts(self, raw_documents):
+        return [
+            pd.Series(text.split()).str.match(r"[A-Z]").sum() for text in raw_documents
+        ]
 
+    def fit_transform(self, raw_documents, y=None, include_captial_counts=True):
+        original = super().fit_transform(raw_documents, y=y)
+        if include_captial_counts:
+            capital_letters = np.array(
+                self.capital_letter_counts(raw_documents)
+            ).reshape(-1, 1)
+            result = np.concatenate((original, capital_letters))
+
+        else:
+            result = original
+        return result
+
+
+uni_gram_vectorizer = CustomVectorizer()
+uni_and_bigram_vectorizer = CustomVectorizer(ngram_range=(1, 2))
 
 if __name__ == "__main__":
 
@@ -80,13 +100,13 @@ if __name__ == "__main__":
     # grid_search_nb.fit(x_uni_and_bi, y_train)
     # print(grid_search_nb.best_params_)
     # print(grid_search_nb.best_score_)
-    clf = LogisticRegressionCV(
-        cv=10, penalty="l1", solver="liblinear", n_jobs=-1, scoring="accuracy"
-    )
-    clf_uni = clf.fit(x_uni, y_train)
-    print(clf_uni.score(x_test_uni, y_test))
-    clf_uni_and_bi = clf.fit(x_uni_and_bi, y_train)
-    print(clf_uni_and_bi.score(x_test_uni_and_bi, y_test))
+    # clf = LogisticRegressionCV(
+    #     cv=10, penalty="l1", solver="liblinear", n_jobs=-1, scoring="accuracy"
+    # )
+    # clf_uni = clf.fit(x_uni, y_train)
+    # print(clf_uni.score(x_test_uni, y_test))
+    # clf_uni_and_bi = clf.fit(x_uni_and_bi, y_train)
+    # print(clf_uni_and_bi.score(x_test_uni_and_bi, y_test))
 
     # X_new = SelectPercentile(chi2, percentile=10).fit_transform(x_uni, y_train)
     # print(X_new.shape)
