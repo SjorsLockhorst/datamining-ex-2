@@ -6,10 +6,11 @@ from sklearn.feature_selection import (
     VarianceThreshold,
     f_classif,
 )
+from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.linear_model import LogisticRegressionCV
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.pipeline import Pipeline
+from sklearn.pipeline import Pipeline, FeatureUnion
 import pandas as pd
 import numpy as np
 
@@ -45,61 +46,67 @@ def test_uni_and_bi(
     return results_uni, results_uni_and_bi
 
 
-class CustomVectorizer(CountVectorizer):
+class CustomVectorizer(BaseEstimator, TransformerMixin):
     def capital_letter_counts(self, raw_documents):
         return [
             pd.Series(text.split()).str.match(r"[A-Z]").sum() for text in raw_documents
         ]
 
-    def fit_transform(self, raw_documents, y=None, include_captial_counts=True):
-        original = super().fit_transform(raw_documents, y=y)
-        if include_captial_counts:
-            capital_letters = np.array(
-                self.capital_letter_counts(raw_documents)
-            ).reshape(-1, 1)
-            result = np.concatenate((original, capital_letters))
+    def transform(self, raw_documents, y=None):
+        """The workhorse of this feature extractor"""
+        return self.capital_letter_counts(raw_documents)
 
-        else:
-            result = original
-        return result
+    def fit(self, df, y=None):
+        """Returns `self` unless something different happens in train and test"""
+        return self
 
 
-uni_gram_vectorizer = CustomVectorizer()
-uni_and_bigram_vectorizer = CustomVectorizer(ngram_range=(1, 2))
+uni_gram_vectorizer = CountVectorizer(stop_words="english")
+uni_and_bigram_vectorizer = CountVectorizer(ngram_range=(1, 2), stop_words="english")
+vect = CustomVectorizer()
+uni_all_feats = FeatureUnion(
+    [("bag-of-words", uni_gram_vectorizer), ("capital-letters", uni_gram_vectorizer)]
+)
+uni_and_bi_all_feats = FeatureUnion(
+    [
+        ("bag-of-words", uni_and_bigram_vectorizer),
+        ("capital-letters", uni_gram_vectorizer),
+    ]
+)
 
 if __name__ == "__main__":
 
     x_train_raw, y_train, x_test_raw, y_test = load_raw_data()
-    x_uni = uni_gram_vectorizer.fit_transform(x_train_raw)
-    x_uni_and_bi = uni_and_bigram_vectorizer.fit_transform(x_train_raw)
-    x_test_uni = uni_gram_vectorizer.transform(x_test_raw)
-    x_test_uni_and_bi = uni_and_bigram_vectorizer.transform(x_test_raw)
+    x_uni = uni_all_feats.fit_transform(x_train_raw)
+    x_uni_and_bi = uni_and_bi_all_feats.fit_transform(x_train_raw)
+    x_test_uni = uni_all_feats.transform(x_test_raw)
+    x_test_uni_and_bi = uni_and_bi_all_feats.transform(x_test_raw)
 
-    # nb_pipe = Pipeline(
-    #     steps=[
-    #         ("variance_threshold", VarianceThreshold(0)),
-    #         ("feature_selector", GenericUnivariateSelect()),
-    #         ("NB", MultinomialNB()),
-    #     ]
-    # )
-    # grid_search_nb = GridSearchCV(
-    #     nb_pipe,
-    #     {
-    #         "feature_selector__mode": ["percentile"],
-    #         "feature_selector__param": [1, 2, 3, 4, 5, 10, 20, 30, 40],
-    #         "feature_selector__score_func": [f_classif, chi2],
-    #     },
-    #     scoring="accuracy",
-    #     cv=10,
-    #     n_jobs=-1,
-    # )
-    # grid_search_nb.fit(x_uni, y_train)
-    # print(grid_search_nb.best_params_)
-    # print(grid_search_nb.best_score_)
+    nb_pipe = Pipeline(
+        steps=[
+            ("variance_threshold", VarianceThreshold(0)),
+            ("feature_selector", GenericUnivariateSelect()),
+            ("NB", MultinomialNB()),
+        ]
+    )
+    grid_search_nb = GridSearchCV(
+        nb_pipe,
+        {
+            "feature_selector__mode": ["percentile"],
+            "feature_selector__param": [1, 2, 3, 4, 5, 10, 20, 30, 40],
+            "feature_selector__score_func": [f_classif, chi2],
+        },
+        scoring="accuracy",
+        cv=10,
+        n_jobs=-1,
+    )
+    grid_search_nb.fit(x_uni, y_train)
+    print(grid_search_nb.best_params_)
+    print(grid_search_nb.best_score_)
 
-    # grid_search_nb.fit(x_uni_and_bi, y_train)
-    # print(grid_search_nb.best_params_)
-    # print(grid_search_nb.best_score_)
+    grid_search_nb.fit(x_uni_and_bi, y_train)
+    print(grid_search_nb.best_params_)
+    print(grid_search_nb.best_score_)
     # clf = LogisticRegressionCV(
     #     cv=10, penalty="l1", solver="liblinear", n_jobs=-1, scoring="accuracy"
     # )
