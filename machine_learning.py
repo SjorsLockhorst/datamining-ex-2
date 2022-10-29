@@ -11,6 +11,7 @@ from sklearn.naive_bayes import MultinomialNB
 from sklearn.linear_model import LogisticRegressionCV
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.pipeline import Pipeline, FeatureUnion
+from sklearn.ensemble import RandomForestClassifier
 import pandas as pd
 import numpy as np
 import hyperparameters as param
@@ -76,7 +77,7 @@ uni_and_bi_all_feats = FeatureUnion(
 )
 
 if __name__ == "__main__":
-    print(param.rand_forest_parameters)
+    print(param.tree_parameters)
     x_train_raw, y_train, x_test_raw, y_test = load_raw_data()
     x_uni = uni_all_feats.fit_transform(x_train_raw)
     x_uni_and_bi = uni_and_bi_all_feats.fit_transform(x_train_raw)
@@ -85,13 +86,16 @@ if __name__ == "__main__":
     nb_pipe = Pipeline(
         steps=[
             ("variance_threshold", VarianceThreshold(0)),
-            ("feature_selector", GenericUnivariateSelect()),
-            ("NB", MultinomialNB()),
+            #("feature_selector", GenericUnivariateSelect()),
+            #("NB", MultinomialNB()),
+            #("rand_forest", RandomForestClassifier(random_state=2))
+            ("tree", RandomForestClassifier(max_features = None, random_state=2))
+            #("log_regression", )
         ]
     )
     grid_search_nb = GridSearchCV(
         nb_pipe,
-        param.multi_bayes_parameters,
+        param.tree_parameters,
         scoring="accuracy",
         cv=10,
         n_jobs=-1,
@@ -99,19 +103,26 @@ if __name__ == "__main__":
     grid_search_nb.fit(x_uni, y_train)
     print(grid_search_nb.best_params_)
     print(grid_search_nb.best_score_)
-    grid_search_nb.pred()
+    #grid_search_nb.pred()
 
     grid_search_nb.fit(x_uni_and_bi, y_train)
     print(grid_search_nb.best_params_)
     print(grid_search_nb.best_score_)
     
-    # clf = LogisticRegressionCV(
+
+    #models with best parameters uni:
+    #MultinomialNB()
+    #clf = RandomForestClassifier(1,random_state = 2, ccp_alpha=0.025)
+    #models with best parameters bi:
+    #clf = RandomForestClassifier(1,random_state = 2, ccp_alpha=0.025)
+    #clf = LogisticRegressionCV(
     #     cv=10, penalty="l1", solver="liblinear", n_jobs=-1, scoring="accuracy"
     # )
-    # clf_uni = clf.fit(x_uni, y_train)
-    # print(clf_uni.score(x_test_uni, y_test))
-    # clf_uni_and_bi = clf.fit(x_uni_and_bi, y_train)
-    # print(clf_uni_and_bi.score(x_test_uni_and_bi, y_test))
+    #clf_uni = clf.fit(x_uni, y_train)
+    #print(clf_uni.score(x_uni, y_train))
+    #print(clf_uni.score(x_test_uni, y_test))
+    #clf_uni_and_bi = clf.fit(x_uni_and_bi, y_train)
+    #print(clf_uni_and_bi.score(x_test_uni_and_bi, y_test))
 
     # X_new = SelectPercentile(chi2, percentile=10).fit_transform(x_uni, y_train)
     # print(X_new.shape)
