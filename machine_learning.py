@@ -8,7 +8,7 @@ from sklearn.feature_selection import (
 )
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.naive_bayes import MultinomialNB
-from sklearn.linear_model import LogisticRegressionCV
+from sklearn.linear_model import LogisticRegressionCV, LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.pipeline import Pipeline, FeatureUnion
 from sklearn.ensemble import RandomForestClassifier
@@ -77,7 +77,6 @@ uni_and_bi_all_feats = FeatureUnion(
 )
 
 if __name__ == "__main__":
-    print(param.tree_parameters)
     x_train_raw, y_train, x_test_raw, y_test = load_raw_data()
     x_uni = uni_all_feats.fit_transform(x_train_raw)
     x_uni_and_bi = uni_and_bi_all_feats.fit_transform(x_train_raw)
@@ -86,16 +85,16 @@ if __name__ == "__main__":
     nb_pipe = Pipeline(
         steps=[
             ("variance_threshold", VarianceThreshold(0)),
-            #("feature_selector", GenericUnivariateSelect()),
-            #("NB", MultinomialNB()),
+            ("feature_selector", GenericUnivariateSelect()),
+            ("NB", MultinomialNB()),
             #("rand_forest", RandomForestClassifier(random_state=2))
-            ("tree", RandomForestClassifier(max_features = None, random_state=2))
-            #("log_regression", )
+            #("tree", RandomForestClassifier(max_features = None, random_state=2))
+            #("log_regression",  LogisticRegression(random_state = 2))
         ]
     )
     grid_search_nb = GridSearchCV(
         nb_pipe,
-        param.tree_parameters,
+        param.multi_bayes_parameters,
         scoring="accuracy",
         cv=10,
         n_jobs=-1,
@@ -111,13 +110,18 @@ if __name__ == "__main__":
     
 
     #models with best parameters uni:
-    #MultinomialNB()
+    #MultinomialNB() param:20, score func chi2 (0.8328125)
     #clf = RandomForestClassifier(1,random_state = 2, ccp_alpha=0.025)
+    #clf = RandomForestClassifier(1000,random_state = 2, ccp_alpha=0, max_features= 50) (0,84375)
+    #LogisticRegression(random_state = 2, C = 265608.7782946684) (0.8375)
     #models with best parameters bi:
+    #MultinomialNB() param:5, score func f_classif (0.8484375)
     #clf = RandomForestClassifier(1,random_state = 2, ccp_alpha=0.025)
-    #clf = LogisticRegressionCV(
-    #     cv=10, penalty="l1", solver="liblinear", n_jobs=-1, scoring="accuracy"
-    # )
+    #clf = RandomForestClassifier(1000,random_state = 2, ccp_alpha=0, max_features=100) (0,84375)
+    #LogisticRegression(random_state = 2, C = 5455.594781168515) (0.8421875)
+    clf = LogisticRegressionCV(
+         cv=10, penalty="l1", solver="liblinear", n_jobs=-1, scoring="accuracy"
+    )
     #clf_uni = clf.fit(x_uni, y_train)
     #print(clf_uni.score(x_uni, y_train))
     #print(clf_uni.score(x_test_uni, y_test))
