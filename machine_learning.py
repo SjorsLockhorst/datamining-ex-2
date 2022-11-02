@@ -155,10 +155,12 @@ if __name__ == "__main__":
         print(evaluate.model_accuracy(ypred, y_test))
         print(precision_recall_fscore_support(y_test, ypred , average = 'binary', pos_label='truthful'))
 
-    
+    print("mcNemar scores")
+    modelnames = ["unitree", "uniforest", "unilog", "unibayes", "bitree", "biforest", "bilog", "bibayes"]
     for i in range(len(predictions)):
         for j in range(len(predictions)):
             if(i!=j):
+                print("{} vs {}".format(modelnames[i], modelnames[j]))
                 y_test = [i=='truthful' for i in y_test]
                 evaluate.mcnemar_test(predictions[i]=='t', predictions[j]=='t', y_test)
         
