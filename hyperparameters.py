@@ -8,7 +8,8 @@ import numpy as np
 base_param = {            
     "feature_selector__mode": ["percentile"],
     "feature_selector__score_func": [f_classif, chi2],
-    "feature_selector__param" : [1, 2, 3, 4, 5, 10, 20, 30, 40]}
+    "feature_selector__param" : np.logspace(0,2, 20)#[1, 2, 3, 4, 5, 10, 20, 30, 40]
+    }
 
 tree_parameters = {
     "tree__n_estimators" : [1],#, 100, 200, 400, 600, 800, 1000],

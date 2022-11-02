@@ -110,12 +110,12 @@ if __name__ == "__main__":
     
 
     #models with best parameters uni:
-    #MultinomialNB() param:20, score func chi2 (0.8328125)
+    #MultinomialNB() param: 11.28837891684689, score func f_classif (0.8375)
     #clf = RandomForestClassifier(1,random_state = 2, ccp_alpha=0.025)
     #clf = RandomForestClassifier(1000,random_state = 2, ccp_alpha=0, max_features= 50) (0,84375)
     #LogisticRegression(random_state = 2, C = 265608.7782946684) (0.8375)
     #models with best parameters bi:
-    #MultinomialNB() param:5, score func f_classif (0.8484375)
+    #MultinomialNB() param:5.455594781168519, score func f_classif (0.85)
     #clf = RandomForestClassifier(1,random_state = 2, ccp_alpha=0.025)
     #clf = RandomForestClassifier(1000,random_state = 2, ccp_alpha=0, max_features=100) (0,84375)
     #LogisticRegression(random_state = 2, C = 5455.594781168515) (0.8421875)
