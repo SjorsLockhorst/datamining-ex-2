@@ -8,6 +8,8 @@ from sklearn.metrics import (
 )
 from scipy.stats.contingency import chi2_contingency
 from scipy.stats import binomtest, chi2
+
+
 def chi_2(table, verbose=True):
     chi_2, p, dof, expected = chi2_contingency(table)
     if verbose:
@@ -17,9 +19,11 @@ def chi_2(table, verbose=True):
         print(f"expected: \n{expected}")
     return chi_2, p, dof, expected
 
+
 def model_accuracy(test_y, y_pred, verbose=False):
-    #y_pred = pred_model(test_x, test_y, model, verbose=verbose)
+    # y_pred = pred_model(test_x, test_y, model, verbose=verbose)
     return accuracy_score(test_y, y_pred)
+
 
 def paired_bootstrap(test_x, test_y, model_a, model_b, b):
     test_x = test_x.to_numpy()
@@ -44,16 +48,15 @@ def paired_bootstrap(test_x, test_y, model_a, model_b, b):
     p_val = a_better_count / b
     return p_val
 
+
 def create_comparison_table(pred_y_a, pred_y_b, correct):
     correct_a = pred_y_a == correct
     correct_b = pred_y_b == correct
     return confusion_matrix(correct_a, correct_b)
 
 
-
 def mcnemar_test(pred_y_a, pred_y_b, correct):
     table = create_comparison_table(pred_y_a, pred_y_b, correct)
-    #print(table)
     b = table[0][1]
     c = table[1][0]
     x2 = (b - c) ** 2 / (b + c)
