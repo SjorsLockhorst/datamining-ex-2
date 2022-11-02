@@ -6,6 +6,7 @@ from sklearn.feature_selection import (
     VarianceThreshold,
     f_classif,
 )
+from sklearn.metrics import precision_recall_fscore_support
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.linear_model import LogisticRegressionCV, LogisticRegression
@@ -17,6 +18,7 @@ import numpy as np
 import hyperparameters as param
 from extract import load_raw_data
 from stop_words import stop_words
+import evaluate
 
 
 def validate(X, y, estimator, scoring):
@@ -82,42 +84,89 @@ if __name__ == "__main__":
     x_uni_and_bi = uni_and_bi_all_feats.fit_transform(x_train_raw)
     x_test_uni = uni_all_feats.transform(x_test_raw)
     x_test_uni_and_bi = uni_and_bi_all_feats.transform(x_test_raw)
+    print(x_uni.shape)  
+    print(x_uni_and_bi.shape)
     nb_pipe = Pipeline(
         steps=[
             ("variance_threshold", VarianceThreshold(0)),
             ("feature_selector", GenericUnivariateSelect()),
-            ("NB", MultinomialNB()),
+            #("NB", MultinomialNB()),
             #("rand_forest", RandomForestClassifier(random_state=2))
-            #("tree", RandomForestClassifier(max_features = None, random_state=2))
+            ("tree", RandomForestClassifier(max_features = None, random_state=2))
             #("log_regression",  LogisticRegression(random_state = 2))
-        ]
+        ],
+        #verbose = 1
     )
     grid_search_nb = GridSearchCV(
         nb_pipe,
-        param.multi_bayes_parameters,
+        param.tree_parameters,
         scoring="accuracy",
         cv=10,
         n_jobs=-1,
     )
+    """
     grid_search_nb.fit(x_uni, y_train)
     print(grid_search_nb.best_params_)
     print(grid_search_nb.best_score_)
-    #grid_search_nb.pred()
 
     grid_search_nb.fit(x_uni_and_bi, y_train)
     print(grid_search_nb.best_params_)
     print(grid_search_nb.best_score_)
     
-
+    var_thr = VarianceThreshold(threshold = 0) #Removing both constant and quasi-constant
+    var_thr.fit(x_uni)
+    bools = var_thr.get_support()
+    print(x_uni.shape, bools.shape)
+    x_uni = x_uni[:,bools]
+    """
     #models with best parameters uni:
-    #MultinomialNB() param: 11.28837891684689, score func f_classif (0.8375)
-    #clf = RandomForestClassifier(1,random_state = 2, ccp_alpha=0.025)
-    #clf = RandomForestClassifier(1000,random_state = 2, ccp_alpha=0, max_features= 50) (0,84375)
+    mn_uni = MultinomialNB() #param: 11.28837891684689, score func f_classif (0.8375)
+    tree_uni = RandomForestClassifier(1,random_state = 2, ccp_alpha=0.025) #0.7125
+    rand_uni = RandomForestClassifier(2000,random_state = 2, ccp_alpha=0, max_features= 88) #(0.8453125)
+    log_uni = LogisticRegression(random_state = 2, C = 265608.7782946684)
+    
+    mn_bi = MultinomialNB()
+    tree_bi = RandomForestClassifier(1,random_state = 2, ccp_alpha=0.025)
+    rand_bi = RandomForestClassifier(2000,random_state = 2, ccp_alpha=0.005, max_features=50)
+    log_bi = LogisticRegression(random_state = 2, C = 5455.594781168515)
+    models = [tree_uni, rand_uni, log_uni, mn_uni, tree_bi, rand_bi, log_bi, mn_bi]
+
+    univariate_uni = GenericUnivariateSelect(f_classif, mode='percentile', param=11.28837891684689)
+    nbdata_uni = univariate_uni.fit_transform(x_uni, y_train)
+    nbtest_uni = univariate_uni.transform(x_test_uni)
+    univariate_bi = GenericUnivariateSelect(f_classif, mode='percentile', param=5.455594781168519)
+    nbdata_bi = univariate_bi.fit_transform(x_uni_and_bi, y_train)
+    nbtest_bi = univariate_bi.transform(x_test_uni_and_bi)
+    predictions = np.empty((len(models),len(y_test)), dtype= str)
+    for i in range(len(models)):
+        if(i == 3):
+            models[i].fit(nbdata_uni, y_train)
+            ypred = models[i].predict(nbtest_uni)
+        elif(i==7):
+            models[i].fit(nbdata_bi, y_train)
+            ypred = models[i].predict(nbtest_bi)
+        elif(i<4):
+            models[i].fit(x_uni, y_train)
+            ypred = models[i].predict(x_test_uni)
+        else:
+            models[i].fit(x_uni_and_bi, y_train)
+            ypred = models[i].predict(x_test_uni_and_bi)
+        predictions[i] = ypred
+        print(evaluate.model_accuracy(ypred, y_test))
+        print(precision_recall_fscore_support(y_test, ypred , average = 'binary', pos_label='truthful'))
+
+    
+    for i in range(len(predictions)):
+        for j in range(len(predictions)):
+            if(i!=j):
+                y_test = [i=='truthful' for i in y_test]
+                evaluate.mcnemar_test(predictions[i]=='t', predictions[j]=='t', y_test)
+        
     #LogisticRegression(random_state = 2, C = 265608.7782946684) (0.8375)
     #models with best parameters bi:
     #MultinomialNB() param:5.455594781168519, score func f_classif (0.85)
     #clf = RandomForestClassifier(1,random_state = 2, ccp_alpha=0.025)
-    #clf = RandomForestClassifier(1000,random_state = 2, ccp_alpha=0, max_features=100) (0,84375)
+    #clf = RandomForestClassifier(2000,random_state = 2, ccp_alpha=0.005, max_features=50) (0.85625) 2500 50 0.859375
     #LogisticRegression(random_state = 2, C = 5455.594781168515) (0.8421875)
     clf = LogisticRegressionCV(
          cv=10, penalty="l1", solver="liblinear", n_jobs=-1, scoring="accuracy"

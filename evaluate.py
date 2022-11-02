@@ -53,11 +53,9 @@ def create_comparison_table(pred_y_a, pred_y_b, correct):
 
 def mcnemar_test(pred_y_a, pred_y_b, correct):
     table = create_comparison_table(pred_y_a, pred_y_b, correct)
-    print(table)
+    #print(table)
     b = table[0][1]
     c = table[1][0]
     x2 = (b - c) ** 2 / (b + c)
     p = chi2.sf(x2, df=1)
-    print(x2)
-    print(1)
-    print(p)
+    print("chi: ", x2, " df : ", 1, " p ", p)
