@@ -1,4 +1,5 @@
 import numpy as np
+from math import comb
 import matplotlib.pyplot as plt
 from sklearn.metrics import (
     precision_recall_fscore_support,
@@ -55,10 +56,24 @@ def create_comparison_table(pred_y_a, pred_y_b, correct):
     return confusion_matrix(correct_a, correct_b)
 
 
-def mcnemar_test(pred_y_a, pred_y_b, correct):
+def mcnemar_test(pred_y_a, pred_y_b, correct, exact_p=False):
     table = create_comparison_table(pred_y_a, pred_y_b, correct)
+    print(table)
     b = table[0][1]
     c = table[1][0]
-    x2 = (b - c) ** 2 / (b + c)
-    p = chi2.sf(x2, df=1)
-    print("chi: ", x2, " df : ", 1, " p ", p)
+    if not exact_p:
+        if b == 0 and c == 0:
+            x2 = 0
+        else:
+            x2 = ((b - c) ** 2) / (b + c)
+        p = chi2.sf(x2, df=1)
+        print("chi: ", x2, " df : ", 1, " p ", p)
+    else:
+        n = b + c
+        total_p = 0
+        if n != 0:
+            for i in range(b, n):
+                total_p += comb(n, i) * (0.5 ** i) * ((1 - 0.5) ** (n - i))
+            print(f"p={total_p * 2}")
+        else:
+            print("p=1")
