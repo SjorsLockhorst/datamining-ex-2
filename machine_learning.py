@@ -93,7 +93,7 @@ if __name__ == "__main__":
         steps=[
             ("variance_threshold", VarianceThreshold(0)),
             ("feature_selector", GenericUnivariateSelect()),
-            # ("NB", MultinomialNB()),
+            ("NB", MultinomialNB()),
             # ("rand_forest", RandomForestClassifier(random_state=2))
             # ("tree", RandomForestClassifier(max_features=None, random_state=2))
             # ("log_regression",  LogisticRegression(random_state = 2))
@@ -123,104 +123,104 @@ if __name__ == "__main__":
     x_uni = x_uni[:,bools]
     """
     # models with best parameters uni:
-    # mn_uni = MultinomialNB()  # param: 11.28837891684689, score func f_classif (0.8375)
-    # tree_uni = DecisionTreeClassifier(ccp_alpha=0.01)  # 0.7125
-    # rand_uni = RandomForestClassifier(
-    #     2000, random_state=2, ccp_alpha=0, max_features=88
-    # )  # (0.8453125)
+    mn_uni = MultinomialNB()  # param: 11.28837891684689, score func f_classif (0.8375)
+    tree_uni = DecisionTreeClassifier(ccp_alpha=0.01)  # 0.7125
+    rand_uni = RandomForestClassifier(
+        2000, random_state=2, ccp_alpha=0, max_features=88
+    )  # (0.8453125)
     log_uni = LogisticRegression(random_state=2, C=265608.7782946684)
-    log_uni.fit(x_uni, y_train)
-    print(log_uni.classes_)
+    # log_uni.fit(x_uni, y_train)
+    # print(log_uni.classes_)
 
-    feature_names_uni = uni_all_feats.get_feature_names_out()
-    log_coefs_positive_uni = pd.Series(
-        log_uni.coef_[0], index=feature_names_uni
-    ).sort_values(ascending=False)
-    print("Unigrams")
-    print(len(log_coefs_positive_uni))
-    print(log_coefs_positive_uni[:5])
-    print(log_coefs_positive_uni[-5:])
-    print(
-        log_coefs_positive_uni.loc[
-            log_coefs_positive_uni.index.str.match(r"^capital.*$")
-        ]
-    )
-
-    # mn_bi = MultinomialNB()
-    # tree_bi = DecisionTreeClassifier(ccp_alpha=0.002)
-    # rand_bi = RandomForestClassifier(
-    #     2000, random_state=2, ccp_alpha=0.005, max_features=50
+    # feature_names_uni = uni_all_feats.get_feature_names_out()
+    # log_coefs_positive_uni = pd.Series(
+    #     log_uni.coef_[0], index=feature_names_uni
+    # ).sort_values(ascending=False)
+    # print("Unigrams")
+    # print(len(log_coefs_positive_uni))
+    # print(log_coefs_positive_uni[:5])
+    # print(log_coefs_positive_uni[-5:])
+    # print(
+    #     log_coefs_positive_uni.loc[
+    #         log_coefs_positive_uni.index.str.match(r"^capital.*$")
+    #     ]
     # )
+
+    mn_bi = MultinomialNB()
+    tree_bi = DecisionTreeClassifier(ccp_alpha=0.002)
+    rand_bi = RandomForestClassifier(
+        2000, random_state=2, ccp_alpha=0.005, max_features=50
+    )
     log_bi = LogisticRegression(random_state=2, C=5455.594781168515)
-    log_bi.fit(x_uni_and_bi, y_train)
-    feature_names_bi = uni_and_bi_all_feats.get_feature_names_out()
-    log_coefs_positive_bi = pd.Series(
-        log_bi.coef_[0], index=feature_names_bi
-    ).sort_values(ascending=False)
-    print("Bigrams")
-    print(len(log_coefs_positive_bi))
-    print(log_coefs_positive_bi[:5])
-    print(log_coefs_positive_bi[-5:])
-    print(
-        log_coefs_positive_bi.loc[log_coefs_positive_bi.index.str.match(r"^capital.*$")]
+    # log_bi.fit(x_uni_and_bi, y_train)
+    # feature_names_bi = uni_and_bi_all_feats.get_feature_names_out()
+    # log_coefs_positive_bi = pd.Series(
+    #     log_bi.coef_[0], index=feature_names_bi
+    # ).sort_values(ascending=False)
+    # print("Bigrams")
+    # print(len(log_coefs_positive_bi))
+    # print(log_coefs_positive_bi[:5])
+    # print(log_coefs_positive_bi[-5:])
+    # print(
+    #     log_coefs_positive_bi.loc[log_coefs_positive_bi.index.str.match(r"^capital.*$")]
+    # )
+
+    models = [tree_uni, rand_uni, log_uni, mn_uni, tree_bi, rand_bi, log_bi, mn_bi]
+
+    univariate_uni = GenericUnivariateSelect(
+        f_classif, mode="percentile", param=11.28837891684689
     )
+    nbdata_uni = univariate_uni.fit_transform(x_uni, y_train)
+    nbtest_uni = univariate_uni.transform(x_test_uni)
+    univariate_bi = GenericUnivariateSelect(
+        f_classif, mode="percentile", param=5.455594781168519
+    )
+    nbdata_bi = univariate_bi.fit_transform(x_uni_and_bi, y_train)
+    nbtest_bi = univariate_bi.transform(x_test_uni_and_bi)
+    predictions = np.empty((len(models), len(y_test)), dtype=str)
+    for i in range(len(models)):
+        if i == 3:
+            models[i].fit(nbdata_uni, y_train)
+            ypred = models[i].predict(nbtest_uni)
+        elif i == 7:
+            models[i].fit(nbdata_bi, y_train)
+            ypred = models[i].predict(nbtest_bi)
+        elif i < 4:
+            models[i].fit(x_uni, y_train)
+            ypred = models[i].predict(x_test_uni)
+        else:
+            models[i].fit(x_uni_and_bi, y_train)
+            ypred = models[i].predict(x_test_uni_and_bi)
+        predictions[i] = ypred
+        print(evaluate.model_accuracy(ypred, y_test))
+        print(
+            precision_recall_fscore_support(
+                y_test, ypred, average="binary", pos_label="truthful"
+            )
+        )
 
-    # models = [tree_uni, rand_uni, log_uni, mn_uni, tree_bi, rand_bi, log_bi, mn_bi]
-
-    # univariate_uni = GenericUnivariateSelect(
-    #     f_classif, mode="percentile", param=11.28837891684689
-    # )
-    # nbdata_uni = univariate_uni.fit_transform(x_uni, y_train)
-    # nbtest_uni = univariate_uni.transform(x_test_uni)
-    # univariate_bi = GenericUnivariateSelect(
-    #     f_classif, mode="percentile", param=5.455594781168519
-    # )
-    # nbdata_bi = univariate_bi.fit_transform(x_uni_and_bi, y_train)
-    # nbtest_bi = univariate_bi.transform(x_test_uni_and_bi)
-    # predictions = np.empty((len(models), len(y_test)), dtype=str)
-    # for i in range(len(models)):
-    #     if i == 3:
-    #         models[i].fit(nbdata_uni, y_train)
-    #         ypred = models[i].predict(nbtest_uni)
-    #     elif i == 7:
-    #         models[i].fit(nbdata_bi, y_train)
-    #         ypred = models[i].predict(nbtest_bi)
-    #     elif i < 4:
-    #         models[i].fit(x_uni, y_train)
-    #         ypred = models[i].predict(x_test_uni)
-    #     else:
-    #         models[i].fit(x_uni_and_bi, y_train)
-    #         ypred = models[i].predict(x_test_uni_and_bi)
-    #     predictions[i] = ypred
-    #     print(evaluate.model_accuracy(ypred, y_test))
-    #     print(
-    #         precision_recall_fscore_support(
-    #             y_test, ypred, average="binary", pos_label="truthful"
-    #         )
-    #     )
-
-    # print("mcNemar scores")
-    # modelnames = [
-    #     "unitree",
-    #     "uniforest",
-    #     "unilog",
-    #     "unibayes",
-    #     "bitree",
-    #     "biforest",
-    #     "bilog",
-    #     "bibayes",
-    # ]
-    # for i in range(len(predictions)):
-    #     for j in range(len(predictions)):
-    #         if i != j:
-    #             print("{} vs {}".format(modelnames[i], modelnames[j]))
-    #             y_test_bool = [i == "truthful" for i in y_test]
-    #             evaluate.mcnemar_test(
-    #                 predictions[i] == "t",
-    #                 predictions[j] == "t",
-    #                 y_test_bool,
-    #                 exact_p=True,
-    #             )
+    print("mcNemar scores")
+    modelnames = [
+        "unitree",
+        "uniforest",
+        "unilog",
+        "unibayes",
+        "bitree",
+        "biforest",
+        "bilog",
+        "bibayes",
+    ]
+    for i in range(len(predictions)):
+        for j in range(len(predictions)):
+            if i != j:
+                print("{} vs {}".format(modelnames[i], modelnames[j]))
+                y_test_bool = [i == "truthful" for i in y_test]
+                evaluate.mcnemar_test(
+                    predictions[i] == "t",
+                    predictions[j] == "t",
+                    y_test_bool,
+                    exact_p=True,
+                )
 
     # LogisticRegression(random_state = 2, C = 265608.7782946684) (0.8375)
     # models with best parameters bi:
